@@ -32,7 +32,7 @@ install_libnice() {
   PATH=~/.local/bin:$PATH
   sudo apt-get install libgnutls28-dev --yes
   sudo apt-get install ninja-build --yes
-  git clone https://github.com/TeeVid/libnice.git
+  git clone https://github.com/TeeVid-CN/libnice.git
   cd libnice
   meson --prefix=$INSTALL_PREFIX build && ninja -C build && sudo ninja -C build install
   cd $ROOT_DIR
