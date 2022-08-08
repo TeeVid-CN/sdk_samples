@@ -402,6 +402,25 @@ void CallItemVideoView::onAudioStarted(int channels, int bps)
         _audioFormat.setByteOrder(QAudioFormat::LittleEndian);
 
         _audioDeviceInfo = QAudioDeviceInfo::defaultOutputDevice();
+        qDebug() << "Audio output device name:" << _audioDeviceInfo.deviceName();
+
+        QList<int> rates = _audioDeviceInfo.supportedSampleRates();
+        for (int rate : rates)
+        {
+            qDebug() << "Supported sample rate =" << rate;
+        }
+
+        QList<int> channelCounts = _audioDeviceInfo.supportedChannelCounts();
+        for (int count : channelCounts)
+        {
+            qDebug() << "Supported channel count =" << count;
+        }
+
+        QList<int> sampleSizes = _audioDeviceInfo.supportedSampleSizes();
+        for (int size : sampleSizes)
+        {
+            qDebug() << "Supported sample size =" << size;
+        }
 
         if (!_audioDeviceInfo.isFormatSupported(_audioFormat))
         {
