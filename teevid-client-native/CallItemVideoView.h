@@ -8,8 +8,7 @@
 
 #include <QFrame>
 
-#include <QtMultimedia/QAudioInput>
-#include <QtMultimedia/QAudioOutput>
+#include <alsa/asoundlib.h>
 
 #include <mutex>
 
@@ -116,10 +115,10 @@ private:
 
     int _audioSampleRate = 48000;
     std::atomic<bool> _audioInitialized;
-    QAudioOutput *_audioOutput = nullptr;
-    QAudioFormat _audioFormat;
-    QAudioDeviceInfo _audioDeviceInfo;
-    QIODevice* _audioBuffer = nullptr;     // IODevice to connect to m_AudioOutput
+    unsigned int _rate;
+    snd_pcm_t *_pcm_handle;
+    snd_pcm_hw_params_t *_params;
+    snd_pcm_uframes_t _frames;
 
     // store participant name here and display only if there's an active stream
     QString _participantName;

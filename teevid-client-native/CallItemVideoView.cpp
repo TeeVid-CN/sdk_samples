@@ -19,6 +19,8 @@ const int cDummyVideoFrameWidth = 1920;
 const int cDummyVideoFrameHeight = 1080;
 const int cAudioSubscribeSampleRate = 48000;
 
+#define PCM_DEVICE "default"
+
 CallItemVideoView::CallItemVideoView(QWidget *parent) :
     QFrame(parent),
     ui(new Ui::CallItemVideoView),
@@ -55,9 +57,11 @@ CallItemVideoView::CallItemVideoView(QWidget *parent) :
 
 CallItemVideoView::~CallItemVideoView()
 {
-    if (_audioInitialized && _audioOutput)
+    if (_audioInitialized /*&& _audioOutput*/)
     {
-        _audioOutput->stop();
+        snd_pcm_drain(_pcm_handle);
+        snd_pcm_close(_pcm_handle);
+        //_audioOutput->stop();
         _audioInitialized = false;
 
     }
@@ -95,7 +99,7 @@ VideoFormatType CallItemVideoView::getVideoFormat() const
 }
 
 void printLog(const char* text)
-{    
+{
     char buffer[26];
     int millisec;
     struct tm* tm_info;
@@ -202,14 +206,16 @@ void CallItemVideoView::OnAudioFrame(unsigned char *data, size_t size, int chann
 
     std::lock_guard<std::mutex> lock(mt_audio);
 
-    //qDebug() << size << channels << bps;
+    onAudioStarted(channels, bps);
 
-    emit audioStarted(channels, bps);
-
-    if (_audioOutput && _audioBuffer)
+    int result = snd_pcm_writei(_pcm_handle, data, _frames);
+    if (result == -EPIPE)
     {
-        int periodSize = _audioOutput->periodSize(); // Check the ideal chunk size, in bytes
-        _audioBuffer->write((const char*) data, periodSize);
+        snd_pcm_prepare(_pcm_handle);
+    }
+    else if (result < 0)
+    {
+        qDebug() << "ERROR. Can't write to PCM device";
     }
 }
 
@@ -395,41 +401,46 @@ void CallItemVideoView::onAudioStarted(int channels, int bps)
 {
     if (!_audioInitialized)
     {
-        _audioFormat.setSampleRate(_audioSampleRate);
-        _audioFormat.setChannelCount(channels);
-        _audioFormat.setSampleSize(bps);
-        _audioFormat.setCodec("audio/pcm");
-        _audioFormat.setByteOrder(QAudioFormat::LittleEndian);
+        _rate = _audioSampleRate;
 
-        _audioDeviceInfo = QAudioDeviceInfo::defaultOutputDevice();
-        qDebug() << "Audio output device name:" << _audioDeviceInfo.deviceName();
+        _rate = _audioSampleRate;
 
-        QList<int> rates = _audioDeviceInfo.supportedSampleRates();
-        for (int rate : rates)
+        /* Open the PCM device in playback mode */
+        int result = snd_pcm_open(&_pcm_handle, PCM_DEVICE, SND_PCM_STREAM_PLAYBACK, 0);
+        if (result < 0)
         {
-            qDebug() << "Supported sample rate =" << rate;
-        }
-
-        QList<int> channelCounts = _audioDeviceInfo.supportedChannelCounts();
-        for (int count : channelCounts)
-        {
-            qDebug() << "Supported channel count =" << count;
-        }
-
-        QList<int> sampleSizes = _audioDeviceInfo.supportedSampleSizes();
-        for (int size : sampleSizes)
-        {
-            qDebug() << "Supported sample size =" << size;
-        }
-
-        if (!_audioDeviceInfo.isFormatSupported(_audioFormat))
-        {
-            //qDebug() << "Audio format is not supported";
+            printf("ERROR: Can't open \"%s\" PCM device. %s\n", PCM_DEVICE, snd_strerror(result));
             return;
         }
 
-        _audioOutput = new QAudioOutput(_audioDeviceInfo, _audioFormat, this);
-        _audioBuffer = _audioOutput->start();
+        /* Allocate parameters object and fill it with default values*/
+        snd_pcm_hw_params_alloca(&_params);
+        snd_pcm_hw_params_any(_pcm_handle, _params);
+
+        /* Set parameters */
+        if ((snd_pcm_hw_params_set_access(_pcm_handle, _params, SND_PCM_ACCESS_RW_INTERLEAVED) < 0) ||
+                (snd_pcm_hw_params_set_format(_pcm_handle, _params, SND_PCM_FORMAT_S16_LE) < 0) ||
+                (snd_pcm_hw_params_set_channels(_pcm_handle, _params, channels) < 0) ||
+                (snd_pcm_hw_params_set_rate_near(_pcm_handle, _params, &_rate, 0) < 0))
+        {
+            printf("ERROR: failed to set PCM handle parameters\n");
+            return;
+        }
+
+        /* Write parameters */
+        if (snd_pcm_hw_params(_pcm_handle, _params) < 0)
+        {
+            printf("ERROR: failed to write PCM handle parameters\n");
+            return;
+        }
+
+        /* Allocate buffer to hold single period */
+        if (snd_pcm_hw_params_get_period_size(_params, &_frames, 0) < 0)
+        {
+            printf("ERROR: failed allocate buffer\n");
+            return;
+        }
+
         _audioInitialized = true;
     }
 }

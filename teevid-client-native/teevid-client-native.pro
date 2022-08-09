@@ -5,7 +5,6 @@
 #-------------------------------------------------
 
 QT       += core gui
-QT       += multimedia
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -119,3 +118,5 @@ contains( UNAME, aarch64 ):{
     LIBS += -L"$$PWD/3rd_party_libs/embedded/speechsdk" -lMicrosoft.CognitiveServices.Speech.core
     LIBS += -L"$$PWD/3rd_party_libs/embedded/speechsdk" -lMicrosoft.CognitiveServices.Speech.extension.audio.sys
 }
+
+LIBS += -lasound
