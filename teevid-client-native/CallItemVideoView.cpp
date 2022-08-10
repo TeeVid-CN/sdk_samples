@@ -18,6 +18,8 @@
 const int cDummyVideoFrameWidth = 1920;
 const int cDummyVideoFrameHeight = 1080;
 const int cAudioSubscribeSampleRate = 48000;
+const int cBitsInByte = 8;
+const int cUSecInSec = 1000000;
 
 #define PCM_DEVICE "default"
 
@@ -37,7 +39,6 @@ CallItemVideoView::CallItemVideoView(QWidget *parent) :
 
     // signal-slot connection to itself because data is received from different thread
     connect(this, SIGNAL(imageUpdated()), this, SLOT(onImageUpdated()));
-    connect(this, SIGNAL(audioStarted(int,int)), this, SLOT(onAudioStarted(int,int)));
     connect(ui->btnTransformSettings, SIGNAL(pressed()), this, SLOT(onTransformSettingsPressed()));
 
     QRect rec = QApplication::desktop()->screenGeometry();
@@ -206,7 +207,7 @@ void CallItemVideoView::OnAudioFrame(unsigned char *data, size_t size, int chann
 
     std::lock_guard<std::mutex> lock(mt_audio);
 
-    onAudioStarted(channels, bps);
+    onAudioStarted(size, channels, bps);
 
     int result = snd_pcm_writei(_pcm_handle, data, _frames);
     if (result == -EPIPE)
@@ -397,12 +398,10 @@ void CallItemVideoView::onImageUpdated()
     ui->frameContainer->repaint();
 }
 
-void CallItemVideoView::onAudioStarted(int channels, int bps)
+void CallItemVideoView::onAudioStarted(size_t size, int channels, int bps)
 {
     if (!_audioInitialized)
     {
-        _rate = _audioSampleRate;
-
         _rate = _audioSampleRate;
 
         /* Open the PCM device in playback mode */
@@ -417,11 +416,15 @@ void CallItemVideoView::onAudioStarted(int channels, int bps)
         snd_pcm_hw_params_alloca(&_params);
         snd_pcm_hw_params_any(_pcm_handle, _params);
 
+        size_t full_bufer_size = _rate * channels * (bps / cBitsInByte);
+        int frequency = full_bufer_size / size;
+        int period_time_us = cUSecInSec / frequency;
         /* Set parameters */
         if ((snd_pcm_hw_params_set_access(_pcm_handle, _params, SND_PCM_ACCESS_RW_INTERLEAVED) < 0) ||
                 (snd_pcm_hw_params_set_format(_pcm_handle, _params, SND_PCM_FORMAT_S16_LE) < 0) ||
                 (snd_pcm_hw_params_set_channels(_pcm_handle, _params, channels) < 0) ||
-                (snd_pcm_hw_params_set_rate_near(_pcm_handle, _params, &_rate, 0) < 0))
+                (snd_pcm_hw_params_set_rate_near(_pcm_handle, _params, &_rate, 0) < 0) ||
+                (snd_pcm_hw_params_set_period_time(_pcm_handle, _params, period_time_us, 0) < 0))
         {
             printf("ERROR: failed to set PCM handle parameters\n");
             return;

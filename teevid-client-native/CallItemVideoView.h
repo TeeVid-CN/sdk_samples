@@ -78,6 +78,7 @@ protected:
     bool event(QEvent *event);
 
     size_t GetWidthFromStride (VideoFormatType videoFormatType, size_t stride);
+    void onAudioStarted(size_t size, int channels, int bps);
 
 signals:
     void lowQualitySelected(long);
@@ -96,7 +97,6 @@ protected slots:
     void onHighQualitySelected();
 
     void onImageUpdated();
-    void onAudioStarted(int channels, int bps);
 
     void onLargeContainerClosed();
 
