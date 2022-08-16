@@ -20,7 +20,6 @@ const int cDummyVideoFrameHeight = 1080;
 const int cAudioSubscribeSampleRate = 48000;
 const int cBitsInByte = 8;
 const int cUSecInSec = 1000000;
-const unsigned int cAudioPeriodDeltaUs = 5000;
 
 #define PCM_DEVICE "default"
 
@@ -426,14 +425,12 @@ void CallItemVideoView::onAudioStarted(size_t size, int channels, int bps)
         size_t full_bufer_size = _rate * channels * (bps / cBitsInByte);
         int frequency = full_bufer_size / size;
         unsigned int period_time_us = cUSecInSec / frequency;
-        unsigned int period_time_us_min = period_time_us - cAudioPeriodDeltaUs;
-        unsigned int period_time_us_max = period_time_us + cAudioPeriodDeltaUs;
         /* Set parameters */
         if ((snd_pcm_hw_params_set_access(_pcm_handle, _params, SND_PCM_ACCESS_RW_INTERLEAVED) < 0) ||
                 (snd_pcm_hw_params_set_format(_pcm_handle, _params, SND_PCM_FORMAT_S16_LE) < 0) ||
                 (snd_pcm_hw_params_set_channels(_pcm_handle, _params, channels) < 0) ||
                 (snd_pcm_hw_params_set_rate_near(_pcm_handle, _params, &_rate, 0) < 0) ||
-                (snd_pcm_hw_params_set_period_time_minmax(_pcm_handle, _params, &period_time_us_min, 0, &period_time_us_max, 0) < 0))
+                (snd_pcm_hw_params_set_period_time_near(_pcm_handle, _params, &period_time_us, 0) < 0))
         {
             printf("ERROR: failed to set PCM handle parameters\n");
             return;
