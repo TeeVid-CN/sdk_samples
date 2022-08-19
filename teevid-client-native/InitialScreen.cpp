@@ -355,7 +355,8 @@ void InitialScreen::ChangeVideoSource()
             std::cout << "Device: " << info[i].name << " - " <<  info[i].deviceId << "\n";
         }
 
-        if(info.size() > 0){
+        if(info.size() > 0)
+        {
             teeVidClient_->ChangeSource(eVideo, info[info.size() - 1].deviceId);
         }
 
@@ -365,8 +366,21 @@ void InitialScreen::ChangeVideoSource()
             std::cout << "Device: " << info[i].name << " - " <<  info[i].deviceId << "\n";
         }
 
-        if(info.size() > 0){
-            teeVidClient_->ChangeSource(eAudio, info[info.size() - 1].deviceId);
+        if(info.size() > 0)
+        {
+            int idx = info.size() - 1;
+
+            // TODO: un-comment below to use Webcam mic
+
+//            for (int i = 0; i < info.size(); ++i)
+//            {
+//                if (info[i].name.find("Webcam") != std::string::npos)
+//                {
+//                    idx = i;
+//                    break;
+//                }
+//            }
+            teeVidClient_->ChangeSource(eAudio, info[idx].deviceId);
         }
     }
 }
