@@ -47,7 +47,7 @@ InitialScreen::InitialScreen(QWidget *parent) : QWidget(parent), ui(new Ui::Init
 {
     _webcamPublishSettings.videoSettings.videoFormatType = VideoFormatType::kUYVY; // consider using I420 for 4K webcam
     _webcamPublishSettings.videoSettings.videoFps = cVideoFps;
-    _webcamPublishSettings.videoSettings.allowMJPG = true;
+    _webcamPublishSettings.videoSettings.allowMJPG = false;
 
 //    _webcamPublishSettings.videoSettings.useWatermark = true;
 //    _webcamPublishSettings.videoSettings.watermarkOptions.imageFileName = "/home/username/watermark.png";
